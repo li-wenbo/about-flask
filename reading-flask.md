@@ -20,28 +20,30 @@ pep333 定义了python web框架和web server之间的接口，只要框架实�
 
 如下是一个简单的满足wsgi 接口的python web应用：
 
-<pre><code>def simple_app(environ, start_response):
+```
+def simple_app(environ, start_response):
     """Simplest possible application object"""
     status = '200 OK'
     response_headers = [('Content-type', 'text/plain')]
     start_response(status, response_headers)
     return ['Hello world!\n']
-</code></pre>
+```
 
 web server预先定义start_response 方法供web 应用调用来收集输出，web server在调用web 应用时，同时传入environ变量来代表os当前的环境，server环境和web request。
 
 具体在当前的gunicorn、flask环境下。
 flask 在Flask对象里，通过__call__方法满足了wsgi的接口要求。
 
-<pre><code>def __call__(self, environ, start_response):
+```
+def __call__(self, environ, start_response):
         """The WSGI server calls the Flask application object as the
         WSGI application. This calls :meth:`wsgi_app` which can be
         wrapped to applying middleware."""
         return self.wsgi_app(environ, start_response)
-</code></pre>     
+```
 
-gunicorn充当了web server，在相关的worker 对象里，通过下面的语句调用了应用框架
-<pre><code>respiter = self.wsgi(environ, resp.start_response)</code></pre>
+gunicorn充当了web server，在相关的worker 对象里，通过语句`respiter = self.wsgi(environ, resp.start_response)`调用了应用框架。
+
 
 # gunicorn
 
@@ -76,7 +78,8 @@ gunicorn充当了web server，在相关的worker 对象里，通过下面的语�
 
 Flask 是框架，对运行不做假设，框架的运行细节交给web server。比如gunicorn 可以通过基于线程的方式来调用app，也可以通过协程的方式来调用，当然还有同步的方式调用，再加上多进程。这里 before_first_request 所说的只是当前app 实例里的第一个请求。若guniciron 启动了多个进程，则多个进程会有多个 before_first_request。
 
-<pre><code>def try_trigger_before_first_request_functions(self):
+```
+def try_trigger_before_first_request_functions(self):
         """Called before each request and will ensure that it triggers
         the :attr:`before_first_request_funcs` and only exactly once per
         application instance (which means process usually).
@@ -91,14 +94,56 @@ Flask 是框架，对运行不做假设，框架的运行细节交给web server�
             for func in self.before_first_request_funcs:
                 func()
             self._got_first_request = True
-</code></pre>
+```
 
-_before_request_lock 是一个theading.Lock 对象，保证了进程内部的同步。
+`_before_request_lock` 是一个theading.Lock 对象，保证了进程内部的同步。
 
 ## other hook
 
 ## local proxy
 
-Flask 通过local proxy机制提供了current_app, g, request, session变量。在一个请求内，任何方法可以方便的访问这些变量，并且这些变量对于其他请求是独立存在。相对于threading.Local()，Flask 额外实现了greenlet独立。
+[werkzeug.local.Local] (https://werkzeug.palletsprojects.com/en/master/local/) 建造了一个以greenlet.getcurrent()/thread.get_ident() 返回id为key的 两层dict数据结构，各自context下的变量存在对应的key下。相对于threading.local()，werkzeug.local.Local 额外实现了greenlet独立。<i>The same context means the same greenlet (if you’re using greenlets) in the same thread and same process.</i>
 
+werkzeug 同时通过了local proxy机制，将操作传递给背后的local 变量。使得同样的变量名在不同的context 下可以访问不同的内容。
+
+Flask 提供了`current_app, g, request, session` 四个localproxy对象。在一个请求内，任何方法可以方便的访问这些变量，这些变量对于其他请求是独立存在。
+
+```
+class Local(object):
+    __slots__ = ("__storage__", "__ident_func__")
+
+    def __init__(self):
+        object.__setattr__(self, "__storage__", {})
+        object.__setattr__(self, "__ident_func__", get_ident)
+
+    def __iter__(self):
+        return iter(self.__storage__.items())
+
+    def __call__(self, proxy):
+        """Create a proxy for a name."""
+        return LocalProxy(self, proxy)
+
+    def __release_local__(self):
+        self.__storage__.pop(self.__ident_func__(), None)
+
+    def __getattr__(self, name):
+        try:
+            return self.__storage__[self.__ident_func__()][name]
+        except KeyError:
+            raise AttributeError(name)
+
+    def __setattr__(self, name, value):
+        ident = self.__ident_func__()
+        storage = self.__storage__
+        try:
+            storage[ident][name] = value
+        except KeyError:
+            storage[ident] = {name: value}
+
+    def __delattr__(self, name):
+        try:
+            del self.__storage__[self.__ident_func__()][name]
+        except KeyError:
+            raise AttributeError(name)
+```
 
