@@ -23,7 +23,8 @@ def foo():
 
 syntax sugar for decorator: @. 上述行为等于: `foo = deco(foo)`
 
-如果是多层decorator，执行顺序将是一个递归的执行顺序，最上面的先进入。
+如果是多层decorator，会有一些不一样，这里我们可python 分为import time 和run time。
+@ 在import time运行，所以我们会看到在import time，最里面的最先运行。和 `foo = deco2(deco1(foo))` 表达式一致。但是在foo 调用时，也就是run time，顺序是相反的，因为走了一个递归。我们也可以看到最后返回的fun，是`deco2.<locals>._wrapper`。
 
 ![deco-on-deco](https://liwb-csdn.oss-cn-hangzhou.aliyuncs.com/deco-on-deco.png)
 
