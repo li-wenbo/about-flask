@@ -69,6 +69,10 @@ gunicorn充当了web server，在相关的worker 对象里，通过语句`respit
 * most based on Werkzeug && jinja2
 * rich hook and signal
 
+## the Flask object
+
+wsgi 约定app需要提供一个对象供server调用。在flask 框架里，就是Flask object，在这个object上注册了app 所需的所有信息，wsgi 的environ信息放在了request对象上。
+
 ## how flask handler a request
 ![request-in-flask](https://liwb-csdn.oss-cn-hangzhou.aliyuncs.com/request-in-flask.png)
 
@@ -76,7 +80,7 @@ gunicorn充当了web server，在相关的worker 对象里，通过语句`respit
 
 ### when before_first_request
 
-Flask 是框架，对运行不做假设，框架的运行细节交给web server。比如gunicorn 可以通过基于线程的方式来调用app，也可以通过协程的方式来调用，当然还有同步的方式调用，再加上多进程。这里 before_first_request 所说的只是当前app 实例里的第一个请求。若guniciron 启动了多个进程，则多个进程会有多个 before_first_request。
+Flask 是框架，对运行不做假设，框架的运行细节交给web server。比如gunicorn 可以通过基于线程的方式来调用app，也可以通过协程的方式来调用，当然还有同步的方式调用，再加上多进程。于是这里 before_first_request 所说的只是当前app 实例里的第一个请求。若guniciron 启动了多个进程，则多个进程会有多个 before_first_request。
 
 ```
 def try_trigger_before_first_request_functions(self):
@@ -102,7 +106,7 @@ def try_trigger_before_first_request_functions(self):
 
 ## local proxy
 
-[werkzeug.local.Local] (https://werkzeug.palletsprojects.com/en/master/local/) 建造了一个以greenlet.getcurrent()/thread.get_ident() 返回id为key的 两层dict数据结构，各自context下的变量存在对应的key下。相对于threading.local()，werkzeug.local.Local 额外实现了greenlet独立。<i>The same context means the same greenlet (if you’re using greenlets) in the same thread and same process.</i>
+[werkzeug.local.Local] (https://werkzeug.palletsprojects.com/en/master/local/) 建造了一个以greenlet.getcurrent()/thread.get_ident() 返回值id为key的 两层dict数据结构，各自context下的变量存在对应的key下，通过key 来实现各自的独立。相对于threading.local()，werkzeug.local.Local 额外实现了greenlet独立。<i>The same context means the same greenlet (if you’re using greenlets) in the same thread and same process.</i>
 
 werkzeug 同时通过了local proxy机制，将操作传递给背后的local 变量。使得同样的变量名在不同的context 下可以访问不同的内容。
 
