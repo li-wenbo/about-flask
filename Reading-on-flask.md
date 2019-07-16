@@ -106,11 +106,11 @@ def try_trigger_before_first_request_functions(self):
 
 ## local proxy
 
-[werkzeug.local.Local] (https://werkzeug.palletsprojects.com/en/master/local/) 建造了一个以greenlet.getcurrent()/thread.get_ident() 返回值id为key的 两层dict数据结构，各自context下的变量存在对应的key下，通过key 来实现各自的独立。相对于threading.local()，werkzeug.local.Local 额外实现了greenlet独立。<i>The same context means the same greenlet (if you’re using greenlets) in the same thread and same process.</i>
+>The same context means the same greenlet (if you’re using greenlets) in the same thread and same process.
 
-werkzeug 同时通过了local proxy机制，将操作传递给背后的local 变量。使得同样的变量名在不同的context 下可以访问不同的内容。
+[werkzeug.local.Local] (https://werkzeug.palletsprojects.com/en/master/local/) 建造了一个以greenlet.getcurrent()/thread.get_ident() 返回值id为key的 两层dict数据结构，各自context下的变量存在对应的key下，通过key 来实现各自的独立。相对于threading.local()，werkzeug.local.Local 额外实现了greenlet独立。
 
-Flask 提供了`current_app, g, request, session` 四个localproxy对象。在一个请求内，任何方法可以方便的访问这些变量，这些变量对于其他请求是独立存在。
+我们可以看到Local 里使用__slots__来声明了属性，__slots__使用可以规避interpreter 使用__dict__来存储实例的属性，在大规模环境下可以更加有效的使用内存。
 
 ```
 class Local(object):
@@ -150,4 +150,13 @@ class Local(object):
         except KeyError:
             raise AttributeError(name)
 ```
+
+werkzeug 同时通过了local proxy机制，将操作传递给背后的local 变量。使得同样的变量名在不同的context 下可以访问不同的内容。
+
+Flask 提供了`current_app, g, request, session` 四个localproxy对象。在一个请求内，任何方法可以方便的访问这些变量，这些变量对于其他请求是独立存在。
+
+## context
+
+* 每请求，建立一个requestcontext，同时建立的还有app context, url_adapter等对象
+* 在url_adapter里使用path_info 和map进行match
 
