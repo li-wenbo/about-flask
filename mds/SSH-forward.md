@@ -4,13 +4,13 @@ ssh 端口转发可以理解，ssh 作为一种数据通道而存在。所谓的
 
 ## local forward 
 
-ssh -L [<localhost>]:<port>:<remote>:<port>  remote host
+    ssh -L [<localhost>]:<port>:<remote>:<port>  remote host
 
 在ssh 客户端建立port，流量会通过ssh 会话到达ssh server，在ssh server，发起对remote:port 的连接。
 
 ## remote forward
 
-ssh -R [<localhost>]:<port>:<remote>:<port>  remote host
+    ssh -R [<localhost>]:<port>:<remote>:<port>  remote host
 
 在ssh 服务端建立port，流量会通过ssh 会话到达ssh client，在ssh client，发起remote:port的连接。
 

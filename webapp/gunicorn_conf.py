@@ -1,19 +1,9 @@
 import multiprocessing
-from time import time
-
-
-# server_hook  http://docs.gunicorn.org/en/stable/settings.html#server-hooks
-def handler_on_starting(server):
-    print("i am starting %s" % time())
-
-def handler_when_ready(server):
-    print("i am ready %s" % time())
-
 
 # server
 pidfile = 'gun.pid'
 backlog = 512
-bind = "127.0.0.1:8888"
+bind = "0.0.0.0:8888"
 daemon = True
 reload = True
 
